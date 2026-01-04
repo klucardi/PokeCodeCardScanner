@@ -216,6 +216,8 @@
         let html5QrcodeScanner = null;
         let totalScans = 0;
         let isScanning = false;
+        let lastScannedCode = null;
+        let scanCooldown = false;
         
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
@@ -280,6 +282,7 @@
             });
             
             isScanning = true;
+            lastScannedCode = null;
             statusSpan.textContent = 'Scanning...';
             statusSpan.className = 'status-value';
         }
@@ -298,13 +301,23 @@
             stopBtn.classList.add('hidden');
             readerDiv.classList.add('hidden');
             isScanning = false;
+            lastScannedCode = null;
             
             statusSpan.textContent = 'Stopped';
             statusSpan.className = 'status-value';
         }
         
         async function onScanSuccess(decodedText) {
-            if (!isScanning) return;
+            if (!isScanning || scanCooldown) return;
+            
+            // Prevent duplicate scans of the same code
+            if (decodedText === lastScannedCode) {
+                return;
+            }
+            
+            // Set cooldown to prevent rapid re-scanning
+            scanCooldown = true;
+            lastScannedCode = decodedText;
             
             statusSpan.textContent = 'Sending to Google Sheets...';
             statusSpan.className = 'status-value';
@@ -339,10 +352,17 @@
                     navigator.vibrate(200);
                 }
                 
+                // Release cooldown after 2 seconds
+                setTimeout(() => {
+                    scanCooldown = false;
+                    statusSpan.textContent = 'Ready for next scan...';
+                }, 2000);
+                
             } catch (error) {
                 console.error('Error sending to Google Sheets:', error);
                 statusSpan.textContent = 'Error sending data';
                 statusSpan.className = 'status-value error';
+                scanCooldown = false;
             }
         }
         
