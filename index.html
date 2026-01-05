@@ -310,14 +310,23 @@
         async function onScanSuccess(decodedText) {
             if (!isScanning || scanCooldown) return;
             
+            // Extract code from Pokemon redemption URLs
+            let processedText = decodedText;
+            if (decodedText.includes('pokemon.com/redeem?2d_code=')) {
+                const codeMatch = decodedText.match(/2d_code=([A-Z0-9\-]+)/i);
+                if (codeMatch && codeMatch[1]) {
+                    processedText = codeMatch[1];
+                }
+            }
+            
             // Prevent duplicate scans of the same code
-            if (decodedText === lastScannedCode) {
+            if (processedText === lastScannedCode) {
                 return;
             }
             
             // Set cooldown to prevent rapid re-scanning
             scanCooldown = true;
-            lastScannedCode = decodedText;
+            lastScannedCode = processedText;
             
             statusSpan.textContent = 'Sending to Google Sheets...';
             statusSpan.className = 'status-value';
@@ -334,7 +343,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        data: decodedText,
+                        data: processedText,
                         timestamp: new Date().toISOString(),
                         sheetName: sheetName,
                         column: columnLetter
@@ -343,7 +352,7 @@
                 
                 totalScans++;
                 totalScansSpan.textContent = totalScans;
-                lastScanSpan.textContent = decodedText.substring(0, 50) + (decodedText.length > 50 ? '...' : '');
+                lastScanSpan.textContent = processedText.substring(0, 50) + (processedText.length > 50 ? '...' : '');
                 statusSpan.textContent = `Added to ${sheetName}, Column ${columnLetter}!`;
                 statusSpan.className = 'status-value success';
                 
